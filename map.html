@@ -2,194 +2,175 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>연우의 발자국 - 대시보드</title>
+    <title>연우의 발자국 - 컬러 대시보드</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/css/autoComplete.min.css">
-    
     <style>
         :root { --main-blue: #2563eb; --bg-gray: #f8fafc; }
         body { margin: 0; display: flex; flex-direction: column; height: 100vh; font-family: 'Arial', sans-serif; background: var(--bg-gray); overflow: hidden; }
-        
         header { height: 60px; background: white; display: flex; align-items: center; padding: 0 20px; border-bottom: 1px solid #e2e8f0; justify-content: space-between; z-index: 2000; }
         .logo { font-weight: bold; color: var(--main-blue); font-size: 1.2rem; cursor: pointer; }
-        nav button { background: none; border: none; padding: 10px 20px; cursor: pointer; font-size: 1rem; color: #64748b; font-weight: 500; }
-        nav button.active { color: var(--main-blue); border-bottom: 2px solid var(--main-blue); }
-
         .main-container { display: flex; flex: 1; overflow: hidden; }
         .sidebar { width: 350px; background: white; border-right: 1px solid #e2e8f0; overflow-y: auto; padding: 20px; z-index: 1500; }
-        .card { background: #fff; border: 1px solid #f1f5f9; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); cursor: pointer; transition: 0.2s; }
-        .card:hover { transform: translateY(-2px); border-color: var(--main-blue); }
-        .btn-add { width: 100%; background: var(--main-blue); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; margin-bottom: 20px; font-weight: bold; }
-
+        .card { border-left: 5px solid var(--main-blue); background: #fff; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; transition: 0.2s; }
+        .card:hover { transform: translateY(-2px); }
+        .btn-add { width: 100%; background: var(--main-blue); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-bottom: 20px; }
         #map { flex: 1; z-index: 1000; }
-
-        /* 모달 스타일 */
-        #inputModal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 15px; z-index: 3000; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); width: 320px; }
+        #inputModal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 15px; z-index: 3000; box-shadow: 0 20px 25px rgba(0,0,0,0.2); width: 340px; }
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2500; }
-        input { width: 100%; padding: 10px; margin: 10px 0; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; }
-        
-        /* 자동완성 커스텀 스타일 */
-        .autoComplete_wrapper { width: 100%; }
-        #autoComplete { background-image: none; }
+        select, input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        .option-group { display: flex; align-items: center; gap: 10px; margin: 5px 0; font-size: 0.85rem; }
     </style>
 </head>
 <body>
 
 <header>
     <div class="logo" onclick="location.href='index.html'">👣 footprint</div>
-    <nav>
-        <button id="btn-stats" onclick="changeMenu('stats')">통계</button>
-        <button id="btn-record" class="active" onclick="changeMenu('record')">기록</button>
-        <button id="btn-content" onclick="changeMenu('content')">컨텐츠</button>
-    </nav>
-    <div style="font-size: 0.9rem; color: #64748b;">연우님의 여행 지도</div>
+    <div style="font-size: 0.9rem; color: #64748b;">연우님의 컬러 여행 지도</div>
 </header>
 
 <div class="main-container">
     <aside class="sidebar">
-        <div id="sidebar-content">
-            <p>데이터 로딩 중...</p>
-        </div>
+        <button class="btn-add" onclick="openModal()">+ 새로운 발자국 남기기</button>
+        <div id="record-list">데이터를 불러오는 중...</div>
     </aside>
     <div id="map"></div>
 </div>
 
 <div class="overlay" id="overlay" onclick="closeModal()"></div>
 <div id="inputModal">
-    <h3>새로운 발자국 남기기</h3>
-    <div class="autoComplete_wrapper">
-        <input id="autoComplete" type="search" placeholder="도시 검색 (예: Matsuyama)">
-    </div>
+    <h3>어디를 색칠할까요?</h3>
+    <select id="country-select" onchange="updateCityOptions()">
+        <option value="">국가 선택</option>
+        <optgroup label="주요 국가">
+            <option value="South Korea">대한민국 🇰🇷</option>
+            <option value="Japan">일본 🇯🇵</option>
+            <option value="China">중국 🇨🇳</option>
+            <option value="Philippines">필리핀 🇵🇭</option>
+        </optgroup>
+    </select>
+    <select id="city-select">
+        <option value="">도시 선택</option>
+    </select>
     <input type="text" id="date-range" placeholder="여행 기간 선택">
     
-    <input type="hidden" id="selected-country">
-    <input type="hidden" id="selected-city">
-    <input type="hidden" id="selected-lat">
-    <input type="hidden" id="selected-lon">
-    
-    <button class="btn-add" id="save-btn" onclick="addRecord()">기록 저장</button>
+    <div class="option-group">
+        <span>칠할 색상:</span>
+        <input type="color" id="color-choice" value="#2563eb" style="width:50px; height:30px; cursor:pointer;">
+    </div>
+    <div class="option-group">
+        <span>패턴:</span>
+        <select id="pattern-select" style="margin:0; padding:5px;">
+            <option value="solid">단색 (Solid)</option>
+            <option value="stripe">빗금 (Stripe)</option>
+            <option value="dot">점무늬 (Dot)</option>
+        </select>
+    </div>
+
+    <button onclick="addRecord()" style="width:100%; background:var(--main-blue); color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; margin-top:15px; cursor:pointer;">기록 및 색칠하기</button>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/autoComplete.min.js"></script>
 
 <script>
-    // 1. Supabase 연결 (연우님의 정보 유지)
     const SUPABASE_URL = 'https://uywqxhinsowmlfysmbxi.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV5d3F4aGluc293bWxmeXNtYnhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMTc3NjUsImV4cCI6MjA4NTY5Mzc2NX0.ez3CXzjh-nuS8cL1vv7NXX7UKlP03DLcEi5H0iNoSJY';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // 2. 지도 초기화
     var map = L.map('map').setView([20, 120], 3);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
+    
     var markers = [];
+    var coloredLayers = [];
 
-    // 3. 날짜 선택기(Flatpickr) 설정
-    flatpickr("#date-range", { mode: "range", dateFormat: "Y-m-d" });
+    // 연우님을 위한 사전 정의 데이터
+    const travelData = {
+        "South Korea": { "제주": [33.4996, 126.5312], "서울": [37.5665, 126.9780], "인천": [37.4563, 126.7052] },
+        "Japan": { "마쓰야마": [33.8392, 132.7654], "시즈오카": [34.9751, 138.3831], "도쿄": [35.6895, 139.6917] },
+        "China": { "칭다오": [36.0671, 120.3826], "베이징": [39.9042, 116.4074] },
+        "Philippines": { "마닐라": [14.5995, 120.9842], "세부": [10.3157, 123.8854] }
+    };
 
-    // 4. 자동완성(Autocomplete) 설정
-    const autoCompleteJS = new autoComplete({
-        selector: "#autoComplete",
-        placeHolder: "도시 이름을 입력하세요...",
-        data: {
-            src: async (query) => {
-                try {
-                    const source = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&addressdetails=1&featuretype=settlement&limit=5`);
-                    return await source.json();
-                } catch (error) { return error; }
-            },
-            keys: ["display_name"]
-        },
-        resultsList: { maxResults: 5 },
-        resultItem: { highlight: true },
-        events: {
-            input: {
-                selection: (event) => {
-                    const selection = event.detail.selection.value;
-                    document.querySelector("#autoComplete").value = selection.display_name;
-                    document.getElementById('selected-country').value = selection.address.country || "";
-                    document.getElementById('selected-city').value = selection.address.city || selection.address.town || "";
-                    document.getElementById('selected-lat').value = selection.lat;
-                    document.getElementById('selected-lon').value = selection.lon;
-                }
-            }
-        }
-    });
-
-    // 5. 기록 저장 (DB Insert)
-    async function addRecord() {
-        const country = document.getElementById('selected-country').value;
-        const city = document.getElementById('selected-city').value;
-        const lat = document.getElementById('selected-lat').value;
-        const lon = document.getElementById('selected-lon').value;
-        const dateRange = document.getElementById('date-range').value;
-
-        if(!city || !dateRange) return alert('도시를 검색해서 선택하고 기간을 입력해주세요!');
-
-        const { error } = await _supabase.from('records').insert([{ 
-            country, city, travel_date: dateRange, lat: lat, lon: lon 
-        }]);
-
-        if(error) alert('저장 실패: ' + error.message);
-        else {
-            alert('기록되었습니다!');
-            closeModal();
-            loadRecords();
+    function updateCityOptions() {
+        const country = document.getElementById('country-select').value;
+        const citySelect = document.getElementById('city-select');
+        citySelect.innerHTML = '<option value="">도시 선택</option>';
+        if(country && travelData[country]) {
+            Object.keys(travelData[country]).forEach(city => {
+                citySelect.innerHTML += `<option value="${city}">${city}</option>`;
+            });
         }
     }
 
-    // 6. 데이터 로드 및 카드 생성
+    flatpickr("#date-range", { mode: "range", dateFormat: "Y-m-d" });
+
+    async function addRecord() {
+        const country = document.getElementById('country-select').value;
+        const city = document.getElementById('city-select').value;
+        const date = document.getElementById('date-range').value;
+        const color = document.getElementById('color-choice').value;
+        const pattern = document.getElementById('pattern-select').value;
+
+        if(!country || !city || !date) return alert('모든 정보를 선택해 주세요!');
+
+        const coords = travelData[country][city];
+
+        const { error } = await _supabase.from('records').insert([{ 
+            country, city, travel_date: date, lat: coords[0], lon: coords[1], color, pattern 
+        }]);
+
+        if(!error) {
+            alert('성공적으로 기록되었습니다!');
+            closeModal();
+            loadRecords();
+            focusLocation(coords[0], coords[1]);
+        }
+    }
+
     async function loadRecords() {
         const { data } = await _supabase.from('records').select('*').order('travel_date', { ascending: false });
-        const content = document.getElementById('sidebar-content');
-        let html = '<button class="btn-add" onclick="openModal()">+ 새로 만들기</button>';
+        const list = document.getElementById('record-list');
+        list.innerHTML = '';
         
         markers.forEach(m => map.removeLayer(m));
-        markers = [];
+        coloredLayers.forEach(l => map.removeLayer(l));
+        markers = []; coloredLayers = [];
 
         if(data) {
             data.forEach(r => {
-                html += `
-                    <div class="card" onclick="focusLocation(${r.lat}, ${r.lon})">
-                        <h4>${r.country} - ${r.city}</h4>
-                        <p style="font-size: 0.8rem; color: #64748b;">${r.travel_date}</p>
+                // 1. 영역 색칠 (GeoJSON 대용 Circle - 패턴 시각화)
+                const area = L.circle([r.lat, r.lon], {
+                    color: r.color,
+                    fillColor: r.color,
+                    fillOpacity: r.pattern === 'stripe' ? 0.2 : 0.5, // 패턴에 따라 투명도 조절로 느낌 차이
+                    dashArray: r.pattern === 'stripe' ? '5, 10' : null, // 빗금 대신 점선 효과
+                    radius: 35000 
+                }).addTo(map);
+                coloredLayers.push(area);
+
+                // 2. 마커
+                const marker = L.marker([r.lat, r.lon]).addTo(map).bindPopup(`<b>${r.city}</b>`);
+                markers.push(marker);
+
+                // 3. 카드
+                list.innerHTML += `
+                    <div class="card" style="border-left-color:${r.color}" onclick="focusLocation(${r.lat}, ${r.lon})">
+                        <h4 style="margin:0;">${r.city} (${r.pattern})</h4>
+                        <p style="margin:5px 0 0 0; font-size:0.8rem; color:#64748b;">${r.travel_date}</p>
                     </div>`;
-                if(r.lat && r.lon) {
-                    const marker = L.marker([r.lat, r.lon]).addTo(map).bindPopup(`<b>${r.city}</b><br>${r.travel_date}`);
-                    markers.push(marker);
-                }
             });
         }
-        content.innerHTML = html;
     }
 
-    // 7. 지도 이동 함수 (FlyTo)
     function focusLocation(lat, lon) {
-        if (!lat || !lon) return;
-        map.flyTo([lat, lon], 11, { animate: true, duration: 1.5 });
+        map.flyTo([lat, lon], 9, { animate: true, duration: 1.5 });
     }
 
-    function changeMenu(menu) {
-        document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('active'));
-        document.getElementById('btn-' + menu).classList.add('active');
-        if(menu === 'record') loadRecords();
-        else document.getElementById('sidebar-content').innerHTML = `<h3>준비 중</h3><p>다음 단계에서 구현할게요!</p>`;
-    }
-
-    function openModal() { 
-        document.getElementById('inputModal').style.display='block'; 
-        document.getElementById('overlay').style.display='block'; 
-    }
-    function closeModal() { 
-        document.getElementById('inputModal').style.display='none'; 
-        document.getElementById('overlay').style.display='none'; 
-        document.getElementById('autoComplete').value = '';
-        document.getElementById('date-range').value = '';
-    }
-
+    function openModal() { document.getElementById('inputModal').style.display='block'; document.getElementById('overlay').style.display='block'; }
+    function closeModal() { document.getElementById('inputModal').style.display='none'; document.getElementById('overlay').style.display='none'; }
+    
     loadRecords();
 </script>
 </body>
