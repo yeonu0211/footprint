@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>연우의 발자국 - 지도</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: sans-serif; }
+        #map { height: 100vh; width: 100%; }
+        .menu-bar { position: absolute; top: 10px; left: 50px; z-index: 1000; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        button { cursor: pointer; padding: 8px 12px; border: 1px solid #ccc; background: white; border-radius: 4px; }
+        button:hover { background: #f0f0f0; }
+    </style>
+</head>
+<body>
+
+<div class="menu-bar">
+    <strong>어디로 갈까요?</strong>
+    <button onclick="zoomTo('world')">세계지도</button>
+    <button onclick="zoomTo('korea')">국내지도</button>
+    <button onclick="location.href='index.html'">처음으로</button>
+</div>
+
+<div id="map"></div>
+
+<script>
+    // 1. 지도 초기화 (처음엔 세계지도가 보이게 설정)
+    var map = L.map('map').setView([20, 120], 3);
+
+    // 2. 지도 배경(타일) 설정 - 깔끔한 스타일
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    // 3. 연우님의 발자국 데이터 (위도, 경도)
+    var spots = [
+        { name: "필리핀 (단기선교)", coords: [14.5995, 120.9842] },
+        { name: "일본 (시즈오카/마쓰야마 고민 중!)", coords: [34.9751, 138.3831] },
+        { name: "중국 칭다오 (2월 예정)", coords: [36.0671, 120.3826] },
+        { name: "연세대학교 (나의 캠퍼스)", coords: [37.5657, 126.9385] }
+    ];
+
+    // 4. 지도에 마커 찍기
+    spots.forEach(function(spot) {
+        L.marker(spot.coords).addTo(map).bindPopup(spot.name);
+    });
+
+    // 5. 버튼 클릭 시 이동하는 함수
+    function zoomTo(type) {
+        if(type === 'world') {
+            map.setView([20, 120], 3);
+        } else if(type === 'korea') {
+            map.setView([36.5, 127.5], 7);
+        }
+    }
+</script>
+
+</body>
+</html>
