@@ -4,57 +4,51 @@
     <meta charset="UTF-8">
     <title>연우의 발자국 - 대시보드</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root { --main-blue: #2563eb; --bg-gray: #f8fafc; }
-        body { margin: 0; display: flex; flex-direction: column; height: 100vh; font-family: 'Pretendard', sans-serif; background: var(--bg-gray); }
+        body { margin: 0; display: flex; flex-direction: column; height: 100vh; font-family: 'Arial', sans-serif; background: var(--bg-gray); overflow: hidden; }
         
         /* 상단 메뉴바 */
-        header { height: 60px; background: white; display: flex; align-items: center; padding: 0 20px; border-bottom: 1px solid #e2e8f0; justify-content: space-between; }
-        .logo { font-weight: bold; color: var(--main-blue); font-size: 1.2rem; }
-        nav button { background: none; border: none; padding: 10px 20px; cursor: pointer; font-size: 1rem; color: #64748b; }
+        header { height: 60px; background: white; display: flex; align-items: center; padding: 0 20px; border-bottom: 1px solid #e2e8f0; justify-content: space-between; z-index: 2000; }
+        .logo { font-weight: bold; color: var(--main-blue); font-size: 1.2rem; cursor: pointer; }
+        nav button { background: none; border: none; padding: 10px 20px; cursor: pointer; font-size: 1rem; color: #64748b; font-weight: 500; }
         nav button.active { color: var(--main-blue); border-bottom: 2px solid var(--main-blue); }
 
-        /* 메인 컨텐츠 영역 */
+        /* 메인 컨텐츠 레이아웃 */
         .main-container { display: flex; flex: 1; overflow: hidden; }
 
         /* 왼쪽 사이드바 */
-        .sidebar { width: 350px; background: white; border-right: 1px solid #e2e8f0; overflow-y: auto; padding: 20px; transition: 0.3s; }
-        .card { background: #fff; border: 1px solid #f1f5f9; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-        .btn-add { width: 100%; background: var(--main-blue); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; margin-bottom: 20px; }
+        .sidebar { width: 350px; background: white; border-right: 1px solid #e2e8f0; overflow-y: auto; padding: 20px; z-index: 1500; }
+        .card { background: #fff; border: 1px solid #f1f5f9; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); cursor: pointer; transition: 0.2s; }
+        .card:hover { transform: translateY(-2px); border-color: var(--main-blue); }
+        .btn-add { width: 100%; background: var(--main-blue); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; margin-bottom: 20px; font-weight: bold; }
 
-        /* 지도 영역 */
-        #map { flex: 1; z-index: 1; }
+        /* 오른쪽 지도 영역 */
+        #map { flex: 1; z-index: 1000; }
 
-        /* 입력 팝업(모달) 스타일 */
-        #inputModal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 15px; z-index: 2000; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
-        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1999; }
+        /* 모달(입력창) */
+        #inputModal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 15px; z-index: 3000; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); width: 300px; }
+        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2500; }
+        input { width: 100%; padding: 8px; margin: 10px 0; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
     </style>
 </head>
 <body>
 
 <header>
-    <div class="logo">👣 footprint</div>
+    <div class="logo" onclick="location.href='index.html'">👣 footprint</div>
     <nav>
-        <button onclick="showMenu('stats')">통계</button>
-        <button class="active" onclick="showMenu('record')">기록</button>
-        <button onclick="showMenu('content')">컨텐츠</button>
+        <button id="btn-stats" onclick="changeMenu('stats')">통계</button>
+        <button id="btn-record" class="active" onclick="changeMenu('record')">기록</button>
+        <button id="btn-content" onclick="changeMenu('content')">컨텐츠</button>
     </nav>
-    <div class="user">연우님 환영합니다</div>
+    <div style="font-size: 0.9rem; color: #64748b;">연우님의 여행 지도</div>
 </header>
 
 <div class="main-container">
-    <aside class="sidebar" id="sidebar">
+    <aside class="sidebar">
         <div id="sidebar-content">
-            <button class="btn-add" onclick="openModal()">+ 새로 만들기</button>
-            <div class="card">
-                <h4>최근 기록: 필리핀</h4>
-                <p style="font-size: 0.8rem; color: #64748b;">2026-01-10 ~ 01-21</p>
-                <div style="color: var(--main-blue); font-weight: bold;">성공적으로 다녀옴!</div>
-            </div>
-            <div class="card">
-                <h4>예정: 중국 칭다오</h4>
-                <p style="font-size: 0.8rem; color: #64748b;">2026-02-24 예정</p>
-            </div>
+            <p>데이터 로딩 중...</p>
         </div>
     </aside>
     <div id="map"></div>
@@ -63,16 +57,89 @@
 <div class="overlay" id="overlay" onclick="closeModal()"></div>
 <div id="inputModal">
     <h3>새로운 발자국 남기기</h3>
-    <p>국가: <input type="text" id="country"></p>
-    <p>도시: <input type="text" id="city"></p>
-    <p>날짜: <input type="date" id="date"></p>
+    <input type="text" id="country" placeholder="국가 (예: 필리핀)">
+    <input type="text" id="city" placeholder="도시 (예: 마닐라)">
+    <input type="date" id="date">
     <button class="btn-add" onclick="addRecord()">기록 저장</button>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    var map = L.map('map').setView([30, 120], 4);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
+    // 1. Supabase 설정
+    const SUPABASE_URL = 'https://uywqxhinsowmlfysmbxi.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV5d3F4aGluc293bWxmeXNtYnhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMTc3NjUsImV4cCI6MjA4NTY5Mzc2NX0.ez3CXzjh-nuS8cL1vv7NXX7UKlP03DLcEi5H0iNoSJY';
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    function showMenu(menu) {
-        const sidebar = document.getElementById('sidebar-content');
+    // 2. 지도 초기화
+    var map = L.map('map').setView([20, 120], 3);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
+    var markers = [];
+
+    // 3. 메뉴 변경 로직
+    async function changeMenu(menu) {
+        document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('active'));
+        document.getElementById('btn-' + menu).classList.add('active');
+        
+        const content = document.getElementById('sidebar-content');
+        if(menu === 'record') {
+            loadRecords();
+        } else if(menu === 'stats') {
+            const { count } = await _supabase.from('records').select('*', { count: 'exact', head: true });
+            content.innerHTML = `<h3>여행 통계</h3><div class="card"><h4>정복한 지역</h4><p>${count || 0}곳의 발자국을 남겼습니다.</p></div>`;
+        } else {
+            content.innerHTML = `<h3>컨텐츠</h3><p>나중에 추가될 예정입니다!</p>`;
+        }
+    }
+
+    // 4. 데이터 저장
+    async function addRecord() {
+        const country = document.getElementById('country').value;
+        const city = document.getElementById('city').value;
+        const date = document.getElementById('date').value;
+
+        if(!country || !city || !date) return alert('모든 항목을 입력해주세요!');
+
+        const { error } = await _supabase.from('records').insert([{ country, city, travel_date: date }]);
+        if(error) alert('저장 실패: ' + error.message);
+        else {
+            alert('저장되었습니다!');
+            closeModal();
+            loadRecords();
+        }
+    }
+
+    // 5. 데이터 불러오기 및 지도 마킹
+    async function loadRecords() {
+        const { data, error } = await _supabase.from('records').select('*').order('travel_date', { ascending: false });
+        const content = document.getElementById('sidebar-content');
+        let html = '<button class="btn-add" onclick="openModal()">+ 새로 만들기</button>';
+        
+        // 기존 마커 제거
+        markers.forEach(m => map.removeLayer(m));
+        markers = [];
+
+        if(data && data.length > 0) {
+            data.forEach(r => {
+                html += `<div class="card"><h4>${r.country} - ${r.city}</h4><p>${r.travel_date}</p></div>`;
+                // 간단히 한국/필리핀 등 기본 좌표 예시 (실제 위경도는 추후 자동화 가능)
+                let tempCoords = [37.56, 126.97]; 
+                if(r.country.includes('필리핀')) tempCoords = [14.59, 120.98];
+                if(r.country.includes('중국')) tempCoords = [36.06, 120.38];
+                
+                const marker = L.marker(tempCoords).addTo(map).bindPopup(`${r.country} ${r.city}`);
+                markers.push(marker);
+            });
+        } else {
+            html += '<p>아직 기록이 없습니다.</p>';
+        }
+        content.innerHTML = html;
+    }
+
+    function openModal() { document.getElementById('inputModal').style.display='block'; document.getElementById('overlay').style.display='block'; }
+    function closeModal() { document.getElementById('inputModal').style.display='none'; document.getElementById('overlay').style.display='none'; }
+
+    // 첫 로드
+    loadRecords();
+</script>
+</body>
+</html>
